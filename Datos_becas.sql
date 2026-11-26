@@ -37,7 +37,7 @@ on conflict (nombre) do nothing;
 
 
 insert into modalidad_intercambio(nombre) values
-     ('Semestral'), ('Anual')
+     ('Semestral'), ('Anual'), ('Verano')
 on conflict (nombre) do nothing;
 
 insert into carrera (nombre) values

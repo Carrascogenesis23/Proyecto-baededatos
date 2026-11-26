@@ -41,5 +41,6 @@ Estas reglas se ejecutan dentro de la transacción PostgreSQL; ante una excepci�
 - [`Script.sql`](./Script.sql) crea el esquema, índices, vista y funciones/triggers. **Es un script de reinicio: elimina las tablas existentes antes de crearlas. No ejecutarlo sobre una base con datos que se quieran conservar.**
 - [`Datos_becas.sql`](./Datos_becas.sql) carga catálogos y datos de demostración. Ejecutarlo después del esquema.
 - `vw_becas_disponibles` expone becas vigentes con país, nivel, tipo, índice mínimo e imagen de portada.
+- `vw_intercambios_disponibles` expone intercambios vigentes desde Honduras hacia el exterior, con institución de origen y destino, país destino, nivel, modalidad, cupos restantes e imagen de portada. Solo incluye convocatorias con fecha límite vigente (o sin fecha límite) y al menos un cupo disponible.
 
 Para preparar una base vacía, crearla primero en PostgreSQL y ejecutar `Script.sql` seguido de `Datos_becas.sql`. Los scripts de esquema son destructivos; los datos reales deben tener respaldo antes de cualquier reinicialización.

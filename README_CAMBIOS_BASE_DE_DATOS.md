@@ -29,6 +29,7 @@ Para intercambios, los estados `Postulado`, `En revision` y `aceptado` reservan 
 
 - Un índice único parcial permite como máximo una multimedia marcada como portada por oportunidad.
 - Se añadieron índices para acelerar búsquedas y relaciones frecuentes, como las consultas por tipo de oportunidad, institución, estudiante, oportunidad y multimedia.
+- `vw_intercambios_disponibles` reúne los datos del convenio, sus instituciones de origen y destino, el país de destino, el nivel, la modalidad, los cupos y la imagen de portada. Solo incluye convenios desde Honduras hacia el exterior, vigentes y con cupos disponibles.
 
 ### Reinicio del esquema
 
@@ -40,6 +41,7 @@ El script ahora también elimina `usuario` durante el reinicio, junto con las de
 - Se añadió el estado de interacción `Favorito`.
 - Se añadió `PDF` al catálogo `tipo_multimedia`, además de `Imagen` y `Video`.
 - Los ejemplos incluyen oportunidades de beca e intercambio y las interacciones correspondientes.
+- El catálogo de modalidad de intercambio incluye `Semestral`, `Anual` y `Verano`.
 
 Los nombres de estado se guardan tal como aparecen en el catálogo, por lo que las consultas y formularios deben usar esos valores. Para distinguir estados que reservan cupo, la base compara el nombre sin distinguir mayúsculas/minúsculas.
 
@@ -49,7 +51,7 @@ Los nombres de estado se guardan tal como aparecen en el catálogo, por lo que l
 2. Al postular, inserten o actualicen la fila de `interaccion`; no actualicen `cupos_disponibles` directamente.
 3. La restricción única de `interaccion` permite una sola fila por pareja estudiante/oportunidad. Para cambiar entre `Favorito`, `Postulado` u otro estado, actualicen esa fila en vez de insertar otra.
 4. Manejen los rechazos de PostgreSQL en las operaciones de postulación: pueden deberse a índice insuficiente, universidad de origen no elegible, tipo no postulable o falta de cupos.
-5. Si ejecutan las rutas de becas, la vista `vw_becas_disponibles` se crea en `Script.sql`; debe existir el esquema actualizado antes de usarla.
+5. Las vistas `vw_becas_disponibles` y `vw_intercambios_disponibles` se crean en `Script.sql`; debe existir el esquema actualizado antes de usar las rutas correspondientes.
 
 ## Cómo aplicar los cambios
 

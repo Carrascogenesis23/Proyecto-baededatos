@@ -497,3 +497,57 @@ LEFT JOIN carrera AS c
 WHERE to_tipo.nombre = 'Beca'
   AND (o.fecha_limite IS NULL OR o.fecha_limite >= CURRENT_DATE);
 
+CREATE OR REPLACE VIEW vw_intercambios_disponibles AS
+SELECT
+    o.id_oportunidad,
+    o.titulo,
+    o.descripcion,
+    o.fecha_limite,
+    origen.id_institucion AS id_universidad_origen,
+    origen.nombre AS universidad_origen,
+    destino.id_institucion AS id_institucion_destino,
+    destino.nombre AS institucion_destino,
+    pais.id_pais,
+    pais.nombre AS pais_destino,
+    nivel.id_nivel,
+    nivel.nombre AS nivel_academico,
+    carrera.nombre AS carrera,
+    modalidad.id_modalidad,
+    modalidad.nombre AS modalidad,
+    intercambio.cupos_disponibles,
+    (
+        SELECT multimedia.url_archivo
+        FROM multimedia_oportunidad AS multimedia
+        JOIN tipo_multimedia AS tipo
+          ON tipo.id_tipo_multimedia = multimedia.id_tipo_multimedia
+        WHERE multimedia.id_oportunidad = o.id_oportunidad
+          AND multimedia.es_portada = TRUE
+          AND tipo.nombre = 'Imagen'
+        ORDER BY multimedia.fecha_subida DESC, multimedia.id_multimedia DESC
+        LIMIT 1
+    ) AS portada_url
+FROM oportunidad AS o
+JOIN tipo_oportunidad AS tipo_oportunidad
+  ON tipo_oportunidad.id_tipo_oportunidad = o.id_tipo_oportunidad
+JOIN intercambio
+  ON intercambio.id_oportunidad = o.id_oportunidad
+JOIN institucion AS origen
+  ON origen.id_institucion = intercambio.id_universidad_origen
+JOIN pais AS pais_origen
+  ON pais_origen.id_pais = origen.id_pais
+JOIN institucion AS destino
+  ON destino.id_institucion = o.id_institucion_destino
+JOIN pais
+  ON pais.id_pais = destino.id_pais
+JOIN nivel_academico AS nivel
+  ON nivel.id_nivel = o.id_nivel
+JOIN modalidad_intercambio AS modalidad
+  ON modalidad.id_modalidad = intercambio.id_modalidad
+LEFT JOIN carrera
+  ON carrera.id_carrera = o.id_carrera
+WHERE tipo_oportunidad.nombre = 'Intercambio'
+  AND pais_origen.nombre = 'Honduras'
+  AND pais.nombre <> 'Honduras'
+  AND (o.fecha_limite IS NULL OR o.fecha_limite >= CURRENT_DATE)
+  AND intercambio.cupos_disponibles > 0;
+

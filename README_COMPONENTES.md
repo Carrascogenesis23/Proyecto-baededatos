@@ -12,17 +12,20 @@
 
 ## Componentes presentes
 
-- [`app.py`](./app.py): crea la aplicación Flask y registra el Blueprint de becas.
+- [`app.py`](./app.py): crea la aplicación Flask y registra los Blueprints de becas e intercambios.
 - [`db.py`](./db.py): crea conexiones PostgreSQL desde `DATABASE_URL` o las variables `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST` y `DB_PORT` (también reconoce `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGHOST` y `PGPORT`).
 - [`routes_becas.py`](./routes_becas.py): implementa `GET /becas` con filtros combinables y `GET /oportunidad/<id>` para la ficha y su multimedia.
+- [`routes_intercambios.py`](./routes_intercambios.py): implementa `GET /intercambios` con filtros SQL parametrizados y `GET /universidades` con el directorio de universidades hondureñas y sus convenios vigentes.
 - [`templates/base.html`](./templates/base.html): plantilla compartida, navegación y alertas flash.
 - [`templates/404.html`](./templates/404.html): página de recurso no encontrado.
 - [`templates/becas.html`](./templates/becas.html): formulario de filtros y tarjetas de resultados.
+- [`templates/intercambios.html`](./templates/intercambios.html): filtros y resultados de intercambios con comparación de universidades y cupos restantes.
+- [`templates/universidades.html`](./templates/universidades.html): directorio hondureño con conteo de convenios activos por institución.
 - [`templates/detalle_oportunidad.html`](./templates/detalle_oportunidad.html): ficha de beca y galería/documentos.
-- [`Script.sql`](./Script.sql): definición del esquema PostgreSQL, vista, índices y reglas de integridad.
+- [`Script.sql`](./Script.sql): definición del esquema PostgreSQL, vistas, índices y reglas de integridad.
 - [`Datos_becas.sql`](./Datos_becas.sql): datos de catálogo y ejemplos.
 
-Los Blueprints y plantillas de intercambios, estudiantes y administración descritos en el plan del equipo aún no aparecen en este repositorio; deben integrarse cuando los otros integrantes los desarrollen. `app.py` tendrá que registrar esos Blueprints al incorporarlos.
+Los componentes de estudiantes y administración descritos en el plan del equipo aún no aparecen en este repositorio. El Blueprint de intercambios ya está registrado en `app.py`.
 
 ## Instalación y ejecución local
 
@@ -42,7 +45,7 @@ No escribas la contraseña en el repositorio ni la compartas. También se puede 
 
 Antes de arrancar la app, la base debe tener el esquema y los datos de demostración. Para crear una base vacía, ejecutar [`Script.sql`](./Script.sql) y después [`Datos_becas.sql`](./Datos_becas.sql). **`Script.sql` borra y recrea tablas; no usarlo como migración de una base con información que se desea conservar.**
 
-La ruta del buscador es `http://127.0.0.1:5000/becas`. Los demás enlaces de las plantillas usan `url_for()` en vez de rutas escritas manualmente.
+Las rutas de consulta son `http://127.0.0.1:5000/becas`, `http://127.0.0.1:5000/intercambios` y `http://127.0.0.1:5000/universidades`. Los enlaces de las plantillas usan `url_for()` en vez de rutas escritas manualmente.
 
 ## Dependencias
 
