@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS beca CASCADE;
 DROP TABLE IF EXISTS oportunidad CASCADE;
 DROP TABLE IF EXISTS administrador_universidad CASCADE;
 DROP TABLE IF EXISTS estudiante CASCADE;
+DROP TABLE IF EXISTS usuario CASCADE;
 DROP TABLE IF EXISTS tipo_oportunidad CASCADE;
 DROP TABLE IF EXISTS tipo_multimedia CASCADE;
 DROP TABLE IF EXISTS carrera CASCADE;
@@ -192,6 +193,307 @@ CREATE INDEX idx_estudiante_carrera ON estudiante(id_carrera);
 CREATE INDEX idx_oportunidad_tipo ON oportunidad(id_tipo_oportunidad);
 CREATE INDEX idx_oportunidad_institucion ON oportunidad(id_institucion_destino);
 CREATE INDEX idx_oportunidad_nivel ON oportunidad(id_nivel);
+CREATE INDEX idx_oportunidad_admin ON oportunidad(id_admin_publicador);
+CREATE INDEX idx_usuario_institucion ON usuario(id_universidad_de_origen);
+CREATE INDEX idx_intercambio_origen ON intercambio(id_universidad_origen);
 CREATE INDEX idx_interaccion_estudiante ON interaccion(id_estudiante);
+CREATE INDEX idx_interaccion_oportunidad ON interaccion(id_oportunidad);
 CREATE INDEX idx_multimedia_oportunidad ON multimedia_oportunidad(id_oportunidad);
+CREATE INDEX idx_multimedia_tipo ON multimedia_oportunidad(id_tipo_multimedia);
+CREATE UNIQUE INDEX uq_multimedia_una_portada_por_oportunidad
+    ON multimedia_oportunidad(id_oportunidad)
+    WHERE es_portada = TRUE;
+
+CREATE OR REPLACE FUNCTION validar_detalle_oportunidad()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_ids INT[];
+    v_id INT;
+    v_tipo VARCHAR(30);
+    v_tiene_beca BOOLEAN;
+    v_tiene_intercambio BOOLEAN;
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        v_ids := ARRAY[NEW.id_oportunidad];
+    ELSIF TG_OP = 'DELETE' THEN
+        v_ids := ARRAY[OLD.id_oportunidad];
+    ELSE
+        v_ids := ARRAY[OLD.id_oportunidad, NEW.id_oportunidad];
+    END IF;
+
+    FOREACH v_id IN ARRAY v_ids LOOP
+        SELECT t.nombre
+        INTO v_tipo
+        FROM oportunidad AS o
+        JOIN tipo_oportunidad AS t
+          ON t.id_tipo_oportunidad = o.id_tipo_oportunidad
+        WHERE o.id_oportunidad = v_id;
+
+        IF NOT FOUND THEN
+            CONTINUE;
+        END IF;
+
+        SELECT EXISTS (
+            SELECT 1 FROM beca WHERE id_oportunidad = v_id
+        )
+        INTO v_tiene_beca;
+
+        SELECT EXISTS (
+            SELECT 1 FROM intercambio WHERE id_oportunidad = v_id
+        )
+        INTO v_tiene_intercambio;
+
+        IF (v_tipo = 'Beca') IS DISTINCT FROM v_tiene_beca THEN
+            RAISE EXCEPTION
+                'La oportunidad % debe tener exactamente el detalle correspondiente al tipo Beca.',
+                v_id
+                USING ERRCODE = '23514';
+        END IF;
+
+        IF (v_tipo = 'Intercambio') IS DISTINCT FROM v_tiene_intercambio THEN
+            RAISE EXCEPTION
+                'La oportunidad % debe tener exactamente el detalle correspondiente al tipo Intercambio.',
+                v_id
+                USING ERRCODE = '23514';
+        END IF;
+    END LOOP;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE CONSTRAINT TRIGGER trg_validar_detalle_oportunidad
+AFTER INSERT OR UPDATE OR DELETE ON oportunidad
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validar_detalle_oportunidad();
+
+CREATE CONSTRAINT TRIGGER trg_validar_detalle_beca
+AFTER INSERT OR UPDATE OR DELETE ON beca
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validar_detalle_oportunidad();
+
+CREATE CONSTRAINT TRIGGER trg_validar_detalle_intercambio
+AFTER INSERT OR UPDATE OR DELETE ON intercambio
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION validar_detalle_oportunidad();
+
+CREATE OR REPLACE FUNCTION estado_reserva_cupo(p_id_estado INT)
+RETURNS BOOLEAN AS $$
+    SELECT lower(nombre) IN ('postulado', 'en revision', 'aceptado')
+    FROM estado_interaccion
+    WHERE id_estado = p_id_estado;
+$$ LANGUAGE sql STABLE;
+
+CREATE OR REPLACE FUNCTION validar_interaccion_postulacion()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_indice NUMERIC(5,2);
+    v_universidad_estudiante INT;
+    v_tipo_oportunidad VARCHAR(30);
+    v_indice_minimo NUMERIC(5,2);
+    v_universidad_origen INT;
+BEGIN
+    IF NOT estado_reserva_cupo(NEW.id_estado) THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT e.indice_academico, u.id_universidad_de_origen
+    INTO v_indice, v_universidad_estudiante
+    FROM estudiante AS e
+    JOIN usuario AS u
+      ON u.id_usuario = e.id_usuario
+    WHERE e.id_estudiante = NEW.id_estudiante;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró el perfil del estudiante %.', NEW.id_estudiante
+            USING ERRCODE = '23514';
+    END IF;
+
+    SELECT t.nombre, b.indice_minimo, i.id_universidad_origen
+    INTO v_tipo_oportunidad, v_indice_minimo, v_universidad_origen
+    FROM oportunidad AS o
+    JOIN tipo_oportunidad AS t
+      ON t.id_tipo_oportunidad = o.id_tipo_oportunidad
+    LEFT JOIN beca AS b
+      ON b.id_oportunidad = o.id_oportunidad
+    LEFT JOIN intercambio AS i
+      ON i.id_oportunidad = o.id_oportunidad
+    WHERE o.id_oportunidad = NEW.id_oportunidad;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No se encontró la oportunidad %.', NEW.id_oportunidad
+            USING ERRCODE = '23514';
+    END IF;
+
+    IF v_tipo_oportunidad = 'Beca' THEN
+        IF v_indice_minimo IS NULL OR v_indice < v_indice_minimo THEN
+            RAISE EXCEPTION
+                'El índice académico (%) no alcanza el mínimo requerido (%) para esta beca.',
+                v_indice, v_indice_minimo
+                USING ERRCODE = '23514';
+        END IF;
+    ELSIF v_tipo_oportunidad = 'Intercambio' THEN
+        IF v_universidad_origen IS NULL
+           OR v_universidad_estudiante <> v_universidad_origen THEN
+            RAISE EXCEPTION
+                'El intercambio no está disponible para la universidad de origen del estudiante.'
+                USING ERRCODE = '23514';
+        END IF;
+    ELSE
+        RAISE EXCEPTION
+            'No se permiten postulaciones para este tipo de oportunidad.'
+            USING ERRCODE = '23514';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION reservar_cupo_intercambio(p_id_oportunidad INT)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE intercambio
+    SET cupos_disponibles = cupos_disponibles - 1
+    WHERE id_oportunidad = p_id_oportunidad
+      AND cupos_disponibles > 0;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION
+            'No quedan cupos disponibles para el intercambio %.',
+            p_id_oportunidad
+            USING ERRCODE = '23514';
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION reservar_cupo_al_insertar_interaccion()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF estado_reserva_cupo(NEW.id_estado)
+       AND EXISTS (
+           SELECT 1 FROM intercambio
+           WHERE id_oportunidad = NEW.id_oportunidad
+       ) THEN
+        PERFORM reservar_cupo_intercambio(NEW.id_oportunidad);
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ajustar_cupo_al_actualizar_interaccion()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_reserva_anterior BOOLEAN;
+    v_nueva_reserva BOOLEAN;
+BEGIN
+    v_reserva_anterior := estado_reserva_cupo(OLD.id_estado);
+    v_nueva_reserva := estado_reserva_cupo(NEW.id_estado);
+
+    IF v_reserva_anterior
+       AND (
+           NOT v_nueva_reserva
+           OR OLD.id_oportunidad <> NEW.id_oportunidad
+       )
+       AND EXISTS (
+           SELECT 1 FROM intercambio
+           WHERE id_oportunidad = OLD.id_oportunidad
+       ) THEN
+        UPDATE intercambio
+        SET cupos_disponibles = cupos_disponibles + 1
+        WHERE id_oportunidad = OLD.id_oportunidad;
+    END IF;
+
+    IF v_nueva_reserva
+       AND (
+           NOT v_reserva_anterior
+           OR OLD.id_oportunidad <> NEW.id_oportunidad
+       )
+       AND EXISTS (
+           SELECT 1 FROM intercambio
+           WHERE id_oportunidad = NEW.id_oportunidad
+       ) THEN
+        PERFORM reservar_cupo_intercambio(NEW.id_oportunidad);
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION liberar_cupo_al_eliminar_interaccion()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF estado_reserva_cupo(OLD.id_estado)
+       AND EXISTS (
+           SELECT 1 FROM intercambio
+           WHERE id_oportunidad = OLD.id_oportunidad
+       ) THEN
+        UPDATE intercambio
+        SET cupos_disponibles = cupos_disponibles + 1
+        WHERE id_oportunidad = OLD.id_oportunidad;
+    END IF;
+
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_validar_interaccion_postulacion
+BEFORE INSERT OR UPDATE ON interaccion
+FOR EACH ROW EXECUTE FUNCTION validar_interaccion_postulacion();
+
+CREATE TRIGGER trg_reservar_cupo_al_insertar_interaccion
+AFTER INSERT ON interaccion
+FOR EACH ROW EXECUTE FUNCTION reservar_cupo_al_insertar_interaccion();
+
+CREATE TRIGGER trg_ajustar_cupo_al_actualizar_interaccion
+BEFORE UPDATE ON interaccion
+FOR EACH ROW EXECUTE FUNCTION ajustar_cupo_al_actualizar_interaccion();
+
+CREATE TRIGGER trg_liberar_cupo_al_eliminar_interaccion
+AFTER DELETE ON interaccion
+FOR EACH ROW EXECUTE FUNCTION liberar_cupo_al_eliminar_interaccion();
+
+CREATE OR REPLACE VIEW vw_becas_disponibles AS
+SELECT
+    o.id_oportunidad,
+    o.titulo,
+    o.descripcion,
+    o.fecha_limite,
+    i.nombre AS institucion_destino,
+    p.id_pais,
+    p.nombre AS pais_destino,
+    n.id_nivel,
+    n.nombre AS nivel_academico,
+    c.nombre AS carrera,
+    b.indice_minimo,
+    tb.id_tipo_beca,
+    tb.nombre AS tipo_beca,
+    (
+        SELECT m.url_archivo
+        FROM multimedia_oportunidad AS m
+        JOIN tipo_multimedia AS tm
+          ON tm.id_tipo_multimedia = m.id_tipo_multimedia
+        WHERE m.id_oportunidad = o.id_oportunidad
+          AND m.es_portada = TRUE
+          AND tm.nombre = 'Imagen'
+        ORDER BY m.fecha_subida DESC, m.id_multimedia DESC
+        LIMIT 1
+    ) AS portada_url
+FROM oportunidad AS o
+JOIN tipo_oportunidad AS to_tipo
+  ON to_tipo.id_tipo_oportunidad = o.id_tipo_oportunidad
+JOIN beca AS b
+  ON b.id_oportunidad = o.id_oportunidad
+JOIN tipo_beca AS tb
+  ON tb.id_tipo_beca = b.id_tipo_beca
+JOIN institucion AS i
+  ON i.id_institucion = o.id_institucion_destino
+JOIN pais AS p
+  ON p.id_pais = i.id_pais
+JOIN nivel_academico AS n
+  ON n.id_nivel = o.id_nivel
+LEFT JOIN carrera AS c
+  ON c.id_carrera = o.id_carrera
+WHERE to_tipo.nombre = 'Beca'
+  AND (o.fecha_limite IS NULL OR o.fecha_limite >= CURRENT_DATE);
 
