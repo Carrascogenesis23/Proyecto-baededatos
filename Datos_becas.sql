@@ -281,7 +281,7 @@ select
 from estudiante est
 join usuario u on est.id_usuario = u.id_usuario
 cross join oportunidad o
-where u.correo = 'genesis.prueba@unah.hn'
+where u.correo = 'Maria.prueba@unah.hn'
   and o.titulo = 'Intercambio Académico en Ingeniería Informática y Sistemas - Universidad de Málaga (UMA)'
 on conflict (id_estudiante, id_oportunidad) do nothing;
 

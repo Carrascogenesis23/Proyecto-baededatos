@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Panel de Estudiante{% endblock %}
+
+{% block content %}
+<section class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+        <div>
+            <span class="badge text-bg-primary mb-2">Estudiante activo</span>
+            <h1 class="h3 fw-bold mb-1">
+                {{ perfil.nombre1 }}{% if perfil.nombre2 %} {{ perfil.nombre2 }}{% endif %}
+                {{ perfil.apellido1 }}{% if perfil.apellido2 %} {{ perfil.apellido2 }}{% endif %}
+            </h1>
+            <p class="text-secondary mb-1">{{ perfil.correo }}</p>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                <span class="badge text-bg-light border">{{ perfil.universidad_origen }}</span>
+                <span class="badge text-bg-light border">{{ perfil.carrera }}</span>
+                <span class="badge text-bg-light border">{{ perfil.nivel_academico }}</span>
+                <span class="badge text-bg-success">Índice académico: {{ perfil.indice_academico }}%</span>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-primary" href="{{ url_for('becas.listar_becas') }}">Explorar becas</a>
+            <a class="btn btn-outline-primary" href="{{ url_for('intercambios.listar_intercambios') }}">Explorar intercambios</a>
+            <form method="post" action="{{ url_for('estudiante.cerrar_sesion') }}">
+                <button class="btn btn-outline-secondary" type="submit">Cambiar perfil</button>
+            </form>
+        </div>
+    </div>
+</section>
+
+<ul class="nav nav-tabs mb-4" id="panelTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-postulaciones" data-bs-toggle="tab"
+                data-bs-target="#pane-postulaciones" type="button" role="tab"
+                aria-controls="pane-postulaciones" aria-selected="true">
+            Postulaciones <span class="badge text-bg-primary ms-1">{{ postulaciones|length }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-favoritos" data-bs-toggle="tab"
+                data-bs-target="#pane-favoritos" type="button" role="tab"
+                aria-controls="pane-favoritos" aria-selected="false">
+            Favoritos <span class="badge text-bg-secondary ms-1">{{ favoritos|length }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-recomendadas" data-bs-toggle="tab"
+                data-bs-target="#pane-recomendadas" type="button" role="tab"
+                aria-controls="pane-recomendadas" aria-selected="false">
+            Recomendadas para mí
+            <span class="badge text-bg-success ms-1">{{ becas_recomendadas|length + intercambios_recomendados|length }}</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="panelTabsContent">
+    <div class="tab-pane fade show active" id="pane-postulaciones" role="tabpanel" aria-labelledby="tab-postulaciones">
+        {% if postulaciones %}
+            <div class="row g-3">
+                {% for item in postulaciones %}
+                    <div class="col-12 col-lg-6">
+                        <article class="card h-100 border-0 shadow-sm">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <span class="badge text-bg-primary">{{ item.tipo_oportunidad }}</span>
+                                        <span class="badge text-bg-light border">{{ item.nivel_academico }}</span>
+                                    </div>
+                                    <span class="badge text-bg-success">{{ item.estado }}</span>
+                                </div>
+                                <h2 class="h5 card-title">
+                                    <a class="text-decoration-none" href="{{ url_for('becas.detalle_oportunidad', id=item.id_oportunidad) }}">
+                                        {{ item.titulo }}
+                                    </a>
+                                </h2>
+                                <p class="text-secondary small mb-2">
+                                    {{ item.institucion_destino }} · {{ item.pais_destino }}
+                                </p>
+                                {% if item.indice_minimo is not none %}
+                                    <p class="small mb-1"><strong>Índice mínimo:</strong> {{ item.indice_minimo }}% ({{ item.tipo_beca }})</p>
+                                {% endif %}
+                                {% if item.universidad_origen %}
+                                    <p class="small mb-1">
+                                        <strong>Convenio:</strong> {{ item.universidad_origen }} · {{ item.modalidad }}
+                                        ({{ item.cupos_disponibles }} cupos restantes)
+                                    </p>
+                                {% endif %}
+                                <p class="small text-secondary mb-3">
+                                    Registrada el {{ item.fecha_accion.strftime('%d/%m/%Y %H:%M') }}
+                                </p>
+                                <div class="mt-auto d-flex flex-wrap gap-2">
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       href="{{ url_for('becas.detalle_oportunidad', id=item.id_oportunidad) }}">
+                                        Ver detalle
+                                    </a>
+                                    <form method="post" action="{{ url_for('estudiante.registrar_interaccion') }}">
+                                        <input type="hidden" name="id_oportunidad" value="{{ item.id_oportunidad }}">
+                                        <input type="hidden" name="estado" value="Favorito">
+                                        <input type="hidden" name="next" value="{{ url_for('estudiante.mi_panel') }}">
+                                        <button class="btn btn-sm btn-outline-warning text-dark" type="submit">
+                                            Pasar a Favorito
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{{ url_for('estudiante.registrar_interaccion') }}">
+                                        <input type="hidden" name="id_oportunidad" value="{{ item.id_oportunidad }}">
+                                        <input type="hidden" name="accion" value="eliminar">
+                                        <input type="hidden" name="next" value="{{ url_for('estudiante.mi_panel') }}">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">
+                                            Cancelar postulación
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                Todavía no tienes postulaciones activas. Revisa la pestaña <strong>Recomendadas para mí</strong> o explora el catálogo.
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="tab-pane fade" id="pane-favoritos" role="tabpanel" aria-labelledby="tab-favoritos">
+        {% if favoritos %}
+            <div class="row g-3">
+                {% for item in favoritos %}
+                    <div class="col-12 col-lg-6">
+                        <article class="card h-100 border-0 shadow-sm">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <span class="badge text-bg-primary">{{ item.tipo_oportunidad }}</span>
+                                        <span class="badge text-bg-light border">{{ item.nivel_academico }}</span>
+                                    </div>
+                                    <span class="badge text-bg-warning text-dark">{{ item.estado }}</span>
+                                </div>
+                                <h2 class="h5 card-title">
+                                    <a class="text-decoration-none" href="{{ url_for('becas.detalle_oportunidad', id=item.id_oportunidad) }}">
+                                        {{ item.titulo }}
+                                    </a>
+                                </h2>
+                                <p class="text-secondary small mb-2">
+                                    {{ item.institucion_destino }} · {{ item.pais_destino }}
+                                </p>
+                                {% if item.indice_minimo is not none %}
+                                    <p class="small mb-1"><strong>Índice mínimo:</strong> {{ item.indice_minimo }}% ({{ item.tipo_beca }})</p>
+                                {% endif %}
+                                {% if item.universidad_origen %}
+                                    <p class="small mb-1">
+                                        <strong>Convenio:</strong> {{ item.universidad_origen }} · {{ item.modalidad }}
+                                        ({{ item.cupos_disponibles }} cupos disponibles)
+                                    </p>
+                                {% endif %}
+                                <p class="small text-secondary mb-3">
+                                    Guardada el {{ item.fecha_accion.strftime('%d/%m/%Y %H:%M') }}
+                                </p>
+                                <div class="mt-auto d-flex flex-wrap gap-2">
+                                    <form method="post" action="{{ url_for('estudiante.registrar_interaccion') }}">
+                                        <input type="hidden" name="id_oportunidad" value="{{ item.id_oportunidad }}">
+                                        <input type="hidden" name="estado" value="Postulado">
+                                        <input type="hidden" name="next" value="{{ url_for('estudiante.mi_panel') }}">
+                                        <button class="btn btn-sm btn-success" type="submit">Postularme ahora</button>
+                                    </form>
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       href="{{ url_for('becas.detalle_oportunidad', id=item.id_oportunidad) }}">
+                                        Ver detalle
+                                    </a>
+                                    <form method="post" action="{{ url_for('estudiante.registrar_interaccion') }}">
+                                        <input type="hidden" name="id_oportunidad" value="{{ item.id_oportunidad }}">
+                                        <input type="hidden" name="accion" value="eliminar">
+                                        <input type="hidden" name="next" value="{{ url_for('estudiante.mi_panel') }}">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Quitar</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                Aún no has guardado oportunidades como favoritas.
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="tab-pane fade" id="pane-recomendadas" role="tabpanel" aria-labelledby="tab-recomendadas">
+        <div class="mb-4">
+            <h2 class="h4 mb-1">Becas compatibles con tu índice ({{ perfil.indice_academico }}%)</h2>
+            <p class="text-secondary small mb-3">
+                Convocatorias vigentes cuyo índice mínimo requerido es menor o igual a tu índice académico.
+            </p>
+            {% if becas_recomendadas %}
+                <div class="row g-3">
+                    {% for beca in becas_recomendadas %}
+                        {% set estado_previo = estados_por_oportunidad.get(beca.id_oportunidad) %}
+                        <div class="col-12 col-md-6 col-xl-4">
+                            <article class="card h-100 border-0 shadow-sm">
+                                <div class="card-body d-flex flex-column">
+                                    <div class="d-flex flex-wrap gap-1 mb-2">
+                                        <span class="badge text-bg-primary">{{ beca.tipo_beca }}</span>
+                                        <span class="badge text-bg-light border">{{ beca.nivel_academico }}</span>
+                                        {% if estado_previo %}
+                                            <span class="badge text-bg-info text-dark">{{ estado_previo }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <h3 class="h5 card-title">{{ beca.titulo }}</h3>
+                                    <p class="text-secondary small mb-2">{{ beca.institucion_destino }} · {{ beca.pais_destino }}</p>
+                                    <p class="small mb-3"><strong>Índice mínimo:</strong> {{ beca.indice_minimo }}%</p>
+                                    <div class="mt-auto d-flex flex-wrap gap-2">
+                                        <form method="post" action="{{ url_for('estudiante.registrar_interaccion') }}">
+                                            <input type="hidden" name="id_oportunidad" value="{{ beca.id_oportunidad }}">
+                                            <input type="hidden" name="estado" value="Postulado">
+                                            <input type="hidden" name="next" value="{{ url_for('estudiante.mi_panel') }}">
+                                            <button class="btn btn-sm btn-success" type="submit">Postularme</button>
+                                        </form>
+                                        <form method="post" action="{{ url_for('estudiante.registrar_interaccion') }}">
+                                            <input type="hidden" name="id_oportunidad" value="{{ beca.id_oportunidad }}">
+                                            <input type="hidden" name="estado" value="Favorito">
+                                            <input type="hidden" name="next" value="{{ url_for('estudiante.mi_panel') }}">
+                                            <button class="btn btn-sm btn-outline-warning text-dark" type="submit">Favorito</button>
+                                        </form>
+                                        <a class="btn btn-sm btn-outline-primary"
+                                           href="{{ url_for('becas.detalle_oportunidad', id=beca.id_oportunidad) }}">
+                                            Detalle
+                                        </a>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-light border">
+                    No hay becas vigentes disponibles para tu índice académico actual.
+                </div>
+            {% endif %}
+        </div>
+
+        <div>
+            <h2 class="h4 mb-1">Intercambios disponibles para {{ perfil.universidad_origen }}</h2>
+            <p class="text-secondary small mb-3">
+                Convenios internacionales con cupos disponibles que aceptan estudiantes de tu universidad de origen.
+            </p>
+            {% if intercambios_recomendados %}
+                <div class="row g-3">
+                    {% for inc in intercambios_recomendados %}
+                        {% set estado_previo = estados_por_oportunidad.get(inc.id_oportunidad) %}
+                        <div class="col-12 col-md-6 col-xl-4">
+                            <article class="card h-100 border-0 shadow-sm">
+                                <div class="card-body d-flex flex-column">
+                                    <div class="d-flex flex-wrap gap-1 mb-2">
+                                        <span class="badge text-bg-primary">{{ inc.modalidad }}</span>
+                                        <span class="badge text-bg-light border">{{ inc.nivel_academico }}</span>
+                                        <span class="badge text-bg-success">{{ inc.cupos_disponibles }} cupos</span>
+                                        {% if estado_previo %}
+                                            <span class="badge text-bg-info text-dark">{{ estado_previo }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <h3 class="h5 card-title">{{ inc.titulo }}</h3>
+                                    <p class="text-secondary small mb-2">{{ inc.institucion_destino }} · {{ inc.pais_destino }}</p>
+                                    <div class="mt-auto d-flex flex-wrap gap-2">
+                                        <form method="post" action="{{ url_for('estudiante.registrar_interaccion') }}">
+                                            <input type="hidden" name="id_oportunidad" value="{{ inc.id_oportunidad }}">
+                                            <input type="hidden" name="estado" value="Postulado">
+                                            <input type="hidden" name="next" value="{{ url_for('estudiante.mi_panel') }}">
+                                            <button class="btn btn-sm btn-success" type="submit">Postularme</button>
+                                        </form>
+                                        <form method="post" action="{{ url_for('estudiante.registrar_interaccion') }}">
+                                            <input type="hidden" name="id_oportunidad" value="{{ inc.id_oportunidad }}">
+                                            <input type="hidden" name="estado" value="Favorito">
+                                            <input type="hidden" name="next" value="{{ url_for('estudiante.mi_panel') }}">
+                                            <button class="btn btn-sm btn-outline-warning text-dark" type="submit">Favorito</button>
+                                        </form>
+                                        <a class="btn btn-sm btn-outline-primary"
+                                           href="{{ url_for('becas.detalle_oportunidad', id=inc.id_oportunidad) }}">
+                                            Detalle
+                                        </a>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-light border">
+                    No hay intercambios con cupos disponibles para tu universidad de origen en este momento.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

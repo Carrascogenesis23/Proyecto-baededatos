@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from decimal import Decimal, InvalidOperation
 
-from flask import Blueprint, abort, flash, render_template, request
+from flask import Blueprint, abort, flash, render_template, request, session
 from psycopg2.extras import RealDictCursor
 
 from db import get_connection
@@ -118,10 +118,16 @@ def detalle_oportunidad(id):
         cursor.execute(
             """
             SELECT o.id_oportunidad, o.titulo, o.descripcion, o.fecha_limite,
+                   to_tipo.nombre AS tipo_oportunidad,
                    i.nombre AS institucion_destino, p.nombre AS pais_destino,
                    n.nombre AS nivel_academico, c.nombre AS carrera,
-                   b.indice_minimo, tb.nombre AS tipo_beca
+                   b.indice_minimo, tb.nombre AS tipo_beca,
+                   orig.nombre AS universidad_origen,
+                   inc.cupos_disponibles,
+                   mod_inc.nombre AS modalidad
             FROM oportunidad AS o
+            JOIN tipo_oportunidad AS to_tipo
+              ON to_tipo.id_tipo_oportunidad = o.id_tipo_oportunidad
             JOIN institucion AS i
               ON i.id_institucion = o.id_institucion_destino
             JOIN pais AS p
@@ -134,6 +140,12 @@ def detalle_oportunidad(id):
               ON b.id_oportunidad = o.id_oportunidad
             LEFT JOIN tipo_beca AS tb
               ON tb.id_tipo_beca = b.id_tipo_beca
+            LEFT JOIN intercambio AS inc
+              ON inc.id_oportunidad = o.id_oportunidad
+            LEFT JOIN institucion AS orig
+              ON orig.id_institucion = inc.id_universidad_origen
+            LEFT JOIN modalidad_intercambio AS mod_inc
+              ON mod_inc.id_modalidad = inc.id_modalidad
             WHERE o.id_oportunidad = %s
             """,
             (id,),
@@ -156,10 +168,27 @@ def detalle_oportunidad(id):
         )
         multimedia = cursor.fetchall()
 
+        interaccion_actual = None
+        id_estudiante = session.get("id_estudiante")
+        if id_estudiante:
+            cursor.execute(
+                """
+                SELECT est.nombre AS estado, inter.fecha_accion
+                FROM interaccion AS inter
+                JOIN estado_interaccion AS est
+                  ON est.id_estado = inter.id_estado
+                WHERE inter.id_estudiante = %s
+                  AND inter.id_oportunidad = %s
+                """,
+                (id_estudiante, id),
+            )
+            interaccion_actual = cursor.fetchone()
+
     return render_template(
         "detalle_oportunidad.html",
         oportunidad=oportunidad,
         multimedia=multimedia,
+        interaccion_actual=interaccion_actual,
     )
 
 

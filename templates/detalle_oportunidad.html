@@ -3,13 +3,23 @@
 {% block title %}{{ oportunidad.titulo }}{% endblock %}
 
 {% block content %}
-<a class="link-primary text-decoration-none" href="{{ url_for('becas.listar_becas') }}">&larr; Volver a las becas</a>
+{% if oportunidad.tipo_oportunidad == 'Intercambio' %}
+    <a class="link-primary text-decoration-none" href="{{ url_for('intercambios.listar_intercambios') }}">&larr; Volver a los intercambios</a>
+{% else %}
+    <a class="link-primary text-decoration-none" href="{{ url_for('becas.listar_becas') }}">&larr; Volver a las becas</a>
+{% endif %}
 
 <article class="card border-0 shadow-sm mt-3">
     <div class="card-body p-4 p-lg-5">
         <div class="d-flex flex-wrap gap-2 mb-3">
+            {% if oportunidad.tipo_oportunidad %}
+                <span class="badge text-bg-secondary">{{ oportunidad.tipo_oportunidad }}</span>
+            {% endif %}
             {% if oportunidad.tipo_beca %}
                 <span class="badge text-bg-primary">{{ oportunidad.tipo_beca }}</span>
+            {% endif %}
+            {% if oportunidad.modalidad %}
+                <span class="badge text-bg-primary">{{ oportunidad.modalidad }}</span>
             {% endif %}
             <span class="badge text-bg-light border">{{ oportunidad.nivel_academico }}</span>
         </div>
@@ -26,6 +36,14 @@
                 <dt class="col-sm-4">Índice mínimo requerido</dt>
                 <dd class="col-sm-8">{{ oportunidad.indice_minimo }}%</dd>
             {% endif %}
+            {% if oportunidad.universidad_origen %}
+                <dt class="col-sm-4">Universidad de origen (convenio)</dt>
+                <dd class="col-sm-8">{{ oportunidad.universidad_origen }}</dd>
+                <dt class="col-sm-4">Modalidad</dt>
+                <dd class="col-sm-8">{{ oportunidad.modalidad }}</dd>
+                <dt class="col-sm-4">Cupos disponibles</dt>
+                <dd class="col-sm-8">{{ oportunidad.cupos_disponibles }}</dd>
+            {% endif %}
             <dt class="col-sm-4">Fecha límite</dt>
             <dd class="col-sm-8">
                 {% if oportunidad.fecha_limite %}
@@ -35,6 +53,51 @@
                 {% endif %}
             </dd>
         </dl>
+
+        <hr class="my-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                {% if interaccion_actual %}
+                    <span class="badge text-bg-info text-dark fs-6">
+                        Estado actual: {{ interaccion_actual.estado }}
+                    </span>
+                {% elif estudiante_actual %}
+                    <span class="text-secondary small">
+                        Postulando como <strong>{{ estudiante_actual.nombre1 }} {{ estudiante_actual.apellido1 }}</strong>
+                        ({{ estudiante_actual.universidad_origen }} · Índice {{ estudiante_actual.indice_academico }}%)
+                    </span>
+                {% else %}
+                    <span class="text-secondary small">
+                        Inicia sesión como estudiante para guardar favoritos o postularte.
+                    </span>
+                {% endif %}
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                {% if estudiante_actual %}
+                    <form method="post" action="{{ url_for('estudiante.registrar_interaccion') }}">
+                        <input type="hidden" name="id_oportunidad" value="{{ oportunidad.id_oportunidad }}">
+                        <input type="hidden" name="estado" value="Favorito">
+                        <input type="hidden" name="next" value="{{ url_for('becas.detalle_oportunidad', id=oportunidad.id_oportunidad) }}">
+                        <button class="btn btn-outline-warning text-dark" type="submit">
+                            Guardar en Favoritos
+                        </button>
+                    </form>
+                    <form method="post" action="{{ url_for('estudiante.registrar_interaccion') }}">
+                        <input type="hidden" name="id_oportunidad" value="{{ oportunidad.id_oportunidad }}">
+                        <input type="hidden" name="estado" value="Postulado">
+                        <input type="hidden" name="next" value="{{ url_for('becas.detalle_oportunidad', id=oportunidad.id_oportunidad) }}">
+                        <button class="btn btn-success" type="submit">
+                            Postularme
+                        </button>
+                    </form>
+                {% else %}
+                    <a class="btn btn-primary"
+                       href="{{ url_for('estudiante.registro', next=url_for('becas.detalle_oportunidad', id=oportunidad.id_oportunidad)) }}">
+                        Iniciar sesión o registrarme para postular
+                    </a>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </article>
 

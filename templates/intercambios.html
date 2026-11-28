@@ -8,6 +8,8 @@
     <p class="text-secondary mb-0">Encuentra convenios de movilidad desde universidades de Honduras hacia el exterior.</p>
 </header>
 
+<i class="bi bi-globe-americas"></i>
+
 <section class="card border-0 shadow-sm mb-4" aria-labelledby="filters-heading">
     <div class="card-body">
         <h2 class="h5 card-title" id="filters-heading">Filtrar convenios</h2>
@@ -109,13 +111,17 @@
                                     {{ intercambio.cupos_disponibles }} cupos disponibles
                                 </span>
                             {% endif %}
-                            <p class="small text-secondary mt-2 mb-0">
+                            <p class="small text-secondary mt-2 mb-3">
                                 {% if intercambio.fecha_limite %}
                                     Fecha límite: {{ intercambio.fecha_limite.strftime('%d/%m/%Y') }}
                                 {% else %}
                                     Fecha límite no especificada
                                 {% endif %}
                             </p>
+                            <a class="btn btn-outline-primary btn-sm w-100"
+                               href="{{ url_for('becas.detalle_oportunidad', id=intercambio.id_oportunidad) }}">
+                                Ver detalle y postularme
+                            </a>
                         </div>
                     </div>
                 </article>
