@@ -260,7 +260,7 @@ where o.titulo = 'Intercambio Académico en Ingeniería Informática y Sistemas 
 
 insert into interaccion (id_estudiante, id_oportunidad, id_estado)
 select
-    e.id_estudiante,
+    est.id_estudiante,
     o.id_oportunidad,
     (select id_estado from estado_interaccion where nombre = 'Postulado')
 from estudiante est
@@ -273,7 +273,7 @@ on conflict (id_estudiante, id_oportunidad) do nothing;
 
 insert into interaccion (id_estudiante, id_oportunidad, id_estado)
 select
-    e.id_estudiante,
+    est.id_estudiante,
     o.id_oportunidad,
     (select id_estado from estado_interaccion where nombre = 'Postulado')
 from estudiante est
