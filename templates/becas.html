@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Buscador de becas{% endblock %}
+
+{% block content %}
+<header class="mb-4">
+    <h1 class="display-6 fw-bold">Encuentra una beca</h1>
+    <p class="text-secondary mb-0">Filtra oportunidades por destino, nivel, tipo e índice académico.</p>
+</header>
+
+<section class="card border-0 shadow-sm mb-4" aria-labelledby="filters-heading">
+    <div class="card-body">
+        <h2 class="h5 card-title" id="filters-heading">Filtros</h2>
+        <form method="get" action="{{ url_for('becas.listar_becas') }}" class="row g-3 align-items-end">
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label" for="pais">País de destino</label>
+                <select class="form-select" id="pais" name="pais">
+                    <option value="">Todos los países</option>
+                    {% for pais in paises %}
+                        <option value="{{ pais.id_pais }}" {% if request.args.get('pais') == pais.id_pais|string %}selected{% endif %}>
+                            {{ pais.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label" for="nivel">Nivel académico</label>
+                <select class="form-select" id="nivel" name="nivel">
+                    <option value="">Todos los niveles</option>
+                    {% for nivel in niveles %}
+                        <option value="{{ nivel.id_nivel }}" {% if request.args.get('nivel') == nivel.id_nivel|string %}selected{% endif %}>
+                            {{ nivel.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label" for="tipo_beca">Tipo de beca</label>
+                <select class="form-select" id="tipo_beca" name="tipo_beca">
+                    <option value="">Todos los tipos</option>
+                    {% for tipo in tipos_beca %}
+                        <option value="{{ tipo.id_tipo_beca }}" {% if request.args.get('tipo_beca') == tipo.id_tipo_beca|string %}selected{% endif %}>
+                            {{ tipo.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label" for="indice">Mi índice académico</label>
+                <input class="form-control" id="indice" name="indice" type="number" min="0" max="100" step="0.01"
+                       value="{{ request.args.get('indice', '') }}" placeholder="Ej. 85">
+                <div class="form-text">Muestra becas cuyo índice mínimo puedes cumplir.</div>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary" type="submit">Aplicar filtros</button>
+                <a class="btn btn-outline-secondary" href="{{ url_for('becas.listar_becas') }}">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</section>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h4 mb-0">Becas disponibles</h2>
+    <span class="badge text-bg-secondary">{{ becas|length }} resultados</span>
+</div>
+
+{% if becas %}
+    <div class="row g-4">
+        {% for beca in becas %}
+            <div class="col-12 col-md-6 col-xl-4">
+                <article class="card h-100 border-0 shadow-sm">
+                    {% if beca.portada_url %}
+                        <img src="{{ beca.portada_url }}" class="card-img-top" alt="{{ beca.titulo }}"
+                             style="height: 210px; object-fit: cover;">
+                    {% else %}
+                        <div class="bg-primary-subtle d-flex align-items-center justify-content-center text-primary"
+                             style="height: 210px;" aria-label="Sin imagen de portada">
+                            <span class="fs-5 fw-semibold">Oportunidad académica</span>
+                        </div>
+                    {% endif %}
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <span class="badge text-bg-primary">{{ beca.tipo_beca }}</span>
+                            <span class="badge text-bg-light border">{{ beca.nivel_academico }}</span>
+                        </div>
+                        <h3 class="h5 card-title">{{ beca.titulo }}</h3>
+                        <p class="text-secondary small mb-2">{{ beca.institucion_destino }} · {{ beca.pais_destino }}</p>
+                        <p class="card-text">{{ beca.descripcion or 'Consulta los detalles de esta oportunidad.' }}</p>
+                        <div class="small text-secondary mt-auto">
+                            {% if beca.indice_minimo is not none %}
+                                <p class="mb-1">Índice mínimo: {{ beca.indice_minimo }}%</p>
+                            {% endif %}
+                            {% if beca.fecha_limite %}
+                                <p class="mb-0">Fecha límite: {{ beca.fecha_limite.strftime('%d/%m/%Y') }}</p>
+                            {% else %}
+                                <p class="mb-0">Fecha límite no especificada</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white border-0 pt-0">
+                        <a class="btn btn-outline-primary w-100"
+                           href="{{ url_for('becas.detalle_oportunidad', id=beca.id_oportunidad) }}">
+                            Ver detalles
+                        </a>
+                    </div>
+                </article>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info" role="status">
+        No hay becas que coincidan con esos filtros. Prueba con otros criterios.
+    </div>
+{% endif %}
+{% endblock %}

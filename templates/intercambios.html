@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Buscador de intercambios{% endblock %}
+
+{% block content %}
+<header class="mb-4">
+    <h1 class="display-6 fw-bold">Intercambios universitarios</h1>
+    <p class="text-secondary mb-0">Encuentra convenios de movilidad desde universidades de Honduras hacia el exterior.</p>
+</header>
+
+<section class="card border-0 shadow-sm mb-4" aria-labelledby="filters-heading">
+    <div class="card-body">
+        <h2 class="h5 card-title" id="filters-heading">Filtrar convenios</h2>
+        <form method="get" action="{{ url_for('intercambios.listar_intercambios') }}" class="row g-3 align-items-end">
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label" for="origen">Universidad de origen</label>
+                <select class="form-select" id="origen" name="origen">
+                    <option value="">Todas las universidades</option>
+                    {% for universidad in universidades %}
+                        <option value="{{ universidad.id_institucion }}" {% if request.args.get('origen') == universidad.id_institucion|string %}selected{% endif %}>
+                            {{ universidad.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label" for="pais">País de destino</label>
+                <select class="form-select" id="pais" name="pais">
+                    <option value="">Todos los países</option>
+                    {% for pais in paises %}
+                        <option value="{{ pais.id_pais }}" {% if request.args.get('pais') == pais.id_pais|string %}selected{% endif %}>
+                            {{ pais.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label" for="nivel">Nivel académico</label>
+                <select class="form-select" id="nivel" name="nivel">
+                    <option value="">Todos los niveles</option>
+                    {% for nivel in niveles %}
+                        <option value="{{ nivel.id_nivel }}" {% if request.args.get('nivel') == nivel.id_nivel|string %}selected{% endif %}>
+                            {{ nivel.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+                <label class="form-label" for="modalidad">Modalidad</label>
+                <select class="form-select" id="modalidad" name="modalidad">
+                    <option value="">Todas las modalidades</option>
+                    {% for modalidad in modalidades %}
+                        <option value="{{ modalidad.id_modalidad }}" {% if request.args.get('modalidad') == modalidad.id_modalidad|string %}selected{% endif %}>
+                            {{ modalidad.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary" type="submit">Aplicar filtros</button>
+                <a class="btn btn-outline-secondary" href="{{ url_for('intercambios.listar_intercambios') }}">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</section>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h4 mb-0">Convocatorias disponibles</h2>
+    <span class="badge text-bg-secondary">{{ intercambios|length }} resultados</span>
+</div>
+
+{% if intercambios %}
+    <div class="row g-4">
+        {% for intercambio in intercambios %}
+            <div class="col-12 col-md-6 col-xl-4">
+                <article class="card h-100 border-0 shadow-sm">
+                    {% if intercambio.portada_url %}
+                        <img src="{{ intercambio.portada_url }}" class="card-img-top" alt="Campus de {{ intercambio.institucion_destino }}"
+                             style="height: 210px; object-fit: cover;">
+                    {% else %}
+                        <div class="bg-primary-subtle d-flex align-items-center justify-content-center text-primary"
+                             style="height: 210px;" aria-label="Sin imagen de portada">
+                            <span class="fs-5 fw-semibold">Intercambio universitario</span>
+                        </div>
+                    {% endif %}
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <span class="badge text-bg-primary">{{ intercambio.modalidad }}</span>
+                            <span class="badge text-bg-light border">{{ intercambio.nivel_academico }}</span>
+                        </div>
+                        <h3 class="h5 card-title">{{ intercambio.titulo }}</h3>
+                        <p class="text-secondary small mb-2">
+                            <strong>Origen:</strong> {{ intercambio.universidad_origen }}
+                        </p>
+                        <p class="text-secondary small mb-2">
+                            <strong>Destino:</strong> {{ intercambio.institucion_destino }} · {{ intercambio.pais_destino }}
+                        </p>
+                        <p class="card-text">{{ intercambio.descripcion or 'Consulta los detalles de esta convocatoria.' }}</p>
+                        {% if intercambio.carrera %}
+                            <p class="small text-secondary mb-2"><strong>Área:</strong> {{ intercambio.carrera }}</p>
+                        {% endif %}
+                        <div class="mt-auto">
+                            {% if intercambio.cupos_disponibles <= 2 %}
+                                <span class="badge text-bg-warning text-dark">
+                                    ¡Pocos cupos! {{ intercambio.cupos_disponibles }} restantes
+                                </span>
+                            {% else %}
+                                <span class="badge text-bg-success">
+                                    {{ intercambio.cupos_disponibles }} cupos disponibles
+                                </span>
+                            {% endif %}
+                            <p class="small text-secondary mt-2 mb-0">
+                                {% if intercambio.fecha_limite %}
+                                    Fecha límite: {{ intercambio.fecha_limite.strftime('%d/%m/%Y') }}
+                                {% else %}
+                                    Fecha límite no especificada
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info" role="status">
+        No hay intercambios disponibles con esos filtros. Prueba con otros criterios.
+    </div>
+{% endif %}
+{% endblock %}

@@ -12,17 +12,32 @@ insert into nivel_academico(nombre) values
 on conflict (nombre) do nothing;
 
 insert into tipo_beca(nombre) values 
-    ('Anual'), ('Parcial'), ('Equidad social'), ('talento')
+    ('Completa'), ('Parcial'), ('Manutención')
 on conflict (nombre) do nothing;
+
+update beca as b
+set id_tipo_beca = nueva.id_tipo_beca
+from tipo_beca as anterior, tipo_beca as nueva
+where b.id_tipo_beca = anterior.id_tipo_beca
+  and anterior.nombre = 'Anual'
+  and nueva.nombre = 'Completa';
+
+delete from tipo_beca as anterior
+where anterior.nombre in ('Anual', 'Equidad social', 'talento')
+  and not exists (
+      select 1
+      from beca as b
+      where b.id_tipo_beca = anterior.id_tipo_beca
+  );
 
 
 insert into estado_interaccion(nombre) values
-   ('Postulado'), ('En revision'), ('aceptado'), ('rechazado') 
+   ('Favorito'), ('Postulado'), ('En revision'), ('aceptado'), ('rechazado')
 on conflict (nombre) do nothing;
 
 
 insert into modalidad_intercambio(nombre) values
-     ('Semestral'), ('Anual')
+     ('Semestral'), ('Anual'), ('Verano')
 on conflict (nombre) do nothing;
 
 insert into carrera (nombre) values
@@ -41,7 +56,7 @@ insert into carrera (nombre) values
 on conflict (nombre) do nothing;
 
 insert into tipo_multimedia (nombre) values
-    ('Imagen'), ('Video')
+    ('Imagen'), ('Video'), ('PDF')
 on conflict (nombre) do nothing;
 
 insert into tipo_oportunidad (nombre) values
@@ -148,7 +163,7 @@ insert into beca (id_oportunidad, indice_minimo, id_tipo_beca)
 select
     id_oportunidad,
     85.00,
-    (select id_tipo_beca from tipo_beca where nombre = 'Anual')
+    (select id_tipo_beca from tipo_beca where nombre = 'Completa')
 from op_beca_alemania;
 
 
@@ -232,7 +247,7 @@ select
     id_oportunidad,
     (select id_institucion from institucion where nombre = 'Universidad Tecnológica Centroamericana(UNITEC)'),
     3,
-    (select id_modalidad from modalidad_intercambio where nombre = 'Presencial')
+    (select id_modalidad from modalidad_intercambio where nombre = 'Semestral')
 from op_tec_arq;
 
 
